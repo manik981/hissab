@@ -3,8 +3,8 @@ import speech_recognition as sr
 from streamlit_mic_recorder import mic_recorder
 from main1 import process_query_stream, generate_audio_summary
 import os
-import io  # In-memory file handling ke liye zaroori
-from pydub import AudioSegment  # Audio conversion ke liye zaroori
+import io  # Required for in-memory file handling
+from pydub import AudioSegment  # Required for audio conversion
 
 # ---------------------------
 # Streamlit App
@@ -25,24 +25,24 @@ if mode == "🎤 Voice":
     audio_info = mic_recorder(start_prompt="🎙️ Start Recording", stop_prompt="⏹️ Stop Recording", key='recorder')
     
     if audio_info and audio_info['bytes']:
+        # Display the recorded audio so the user can listen to it
         st.audio(audio_info['bytes'])
         
         r = sr.Recognizer()
         try:
-            # Browser se aaye audio bytes ko memory mein load karein
+            # Convert web format audio bytes to a proper WAV format in memory
             audio_bytes = audio_info['bytes']
             audio_segment = AudioSegment.from_file(io.BytesIO(audio_bytes))
             
-            # Audio ko sahi WAV format mein memory mein convert karein
+            # Create an in-memory WAV file
             wav_io = io.BytesIO()
             audio_segment.export(wav_io, format="wav")
-            wav_io.seek(0)  # Buffer ko shuru mein le jaayein
+            wav_io.seek(0) # Rewind the buffer to the beginning
             
-            # Memory mein bani WAV file ko source ke roop mein istemal karein
+            # Use the in-memory WAV file as the audio source
             with sr.AudioFile(wav_io) as source:
                 audio_data = r.record(source)
             
-            # Aawaz ko text mein badlein
             recognized_text = r.recognize_google(audio_data, language='hi-IN')
             st.success(f"📝 Aapne kaha: {recognized_text}")
             user_story = recognized_text
@@ -59,7 +59,7 @@ else:
 
 # ---------------------------
 # Process Query
-# (Yah section bilkul waisa hi rahega)
+# (This section remains unchanged)
 # ---------------------------
 if user_story:
     st.subheader("📊 Detailed Hisaab")
@@ -80,7 +80,8 @@ if user_story:
         with st.spinner('Audio summary banaya ja raha hai...'):
             audio_file = generate_audio_summary(api_key, detailed_text, slow=False, lang="hi")
             if audio_file and os.path.exists(audio_file):
-                st.audio(audio_file, format="audio/mp3")
+                # YAHAN BADLAAV KIYA GAYA HAI: autoplay=True joda gaya hai
+                st.audio(audio_file, format="audio/mp3", autoplay=True)
             else:
                 st.warning("Audio summary generate nahi ho paya.")
 
