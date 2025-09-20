@@ -3,6 +3,8 @@ import speech_recognition as sr
 from streamlit_mic_recorder import mic_recorder
 from main1 import process_query_stream, generate_audio_summary
 import os
+import io  # In-memory file handling ke liye zaroori
+from pydub import AudioSegment  # Audio conversion ke liye zaroori
 
 # ---------------------------
 # Streamlit App
@@ -20,26 +22,27 @@ user_story = None
 if mode == "🎤 Voice":
     st.write("Record karne ke liye start par click karein aur bolna shuru karein. Bolna khatm hone par stop par click karein.")
     
-    # The component returns a dictionary with audio info
     audio_info = mic_recorder(start_prompt="🎙️ Start Recording", stop_prompt="⏹️ Stop Recording", key='recorder')
     
-    # Check if the dictionary and the 'bytes' key exist
     if audio_info and audio_info['bytes']:
-        # Use audio_info['bytes'] to get the raw audio data
-        st.audio(audio_info['bytes'], format="audio/wav")
+        st.audio(audio_info['bytes'])
         
-        # Process the audio bytes to convert to text
         r = sr.Recognizer()
         try:
-            # Save audio bytes to a temporary file
-            with open("audio.wav", "wb") as f:
-                f.write(audio_info['bytes'])
+            # Browser se aaye audio bytes ko memory mein load karein
+            audio_bytes = audio_info['bytes']
+            audio_segment = AudioSegment.from_file(io.BytesIO(audio_bytes))
             
-            # Use the temporary file as the audio source
-            with sr.AudioFile("audio.wav") as source:
+            # Audio ko sahi WAV format mein memory mein convert karein
+            wav_io = io.BytesIO()
+            audio_segment.export(wav_io, format="wav")
+            wav_io.seek(0)  # Buffer ko shuru mein le jaayein
+            
+            # Memory mein bani WAV file ko source ke roop mein istemal karein
+            with sr.AudioFile(wav_io) as source:
                 audio_data = r.record(source)
             
-            # Recognize the speech
+            # Aawaz ko text mein badlein
             recognized_text = r.recognize_google(audio_data, language='hi-IN')
             st.success(f"📝 Aapne kaha: {recognized_text}")
             user_story = recognized_text
@@ -56,13 +59,12 @@ else:
 
 # ---------------------------
 # Process Query
-# (This section remains unchanged)
+# (Yah section bilkul waisa hi rahega)
 # ---------------------------
 if user_story:
     st.subheader("📊 Detailed Hisaab")
     api_key = os.getenv("GOOGLE_API_KEY")
 
-    # Display spinner while processing
     with st.spinner('Hisaab lagaya ja raha hai...'):
         placeholder = st.empty()
         detailed_text = ""
